@@ -1,5 +1,36 @@
 #!/usr/bin/env ruby
 
+# This script is just a utility that processes data that I extract from a
+# Börsdata filter configured like this:
+#
+# F-Score              Poäng                (any)
+# Kursutveckling       Utveckling 10 år     > 304  (avg +15%/year)
+# Kursutveckling       Utveckling 5 år      > 101       - " -
+# Kursutveckling       Utveckling 3 år      > 52        - " -
+# Kursutveckling       Utveckling 1 år      > 15        - " -
+# Relativ utveckling   Utveckling 6m        > 0    (beat OMXS30)
+# Relativ utveckling   Utveckling 3m        > 0         - " -
+# Aktiekurs            Senaste              (any)
+#
+# Export as CSV sorted in any order.
+#
+# This script sorts the instruments in falling order of evenness over the
+# different partisions of the last ten years (10-5, 5-3, 3-1 and 1-now),
+# and also highlights where the average yearly percentage requirement is
+# not satisfied.
+#
+# When I started to use this script, I wanted to see the Piotroski F-score
+# of the companies that the screening procedure picked. I noticed that even
+# though there is no fundamental data included anywhere in the procedure,
+# the top companies tend to have quite a high score. I guess that companies
+# that have delivered +15% yearly for at least ten years are generally quite
+# well managed.
+#
+# P/E values are generally high, though. This screening procedure does not
+# give you a list of undiscovered gems... :-)
+#
+# Usage: femtonplussare.rb <CSV_file>
+
 require 'pp'
 
 REQUIRED_YEARLY_PERCENTAGE = 10.0
@@ -99,9 +130,7 @@ end
     records.sort_by! do |r|
         r[key]
     end.each_with_index do |r, i|
-        if r[:points]
-            r[:points] += i
-        end
+        r[:points] += i
     end
 end
 
