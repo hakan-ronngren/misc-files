@@ -79,16 +79,13 @@ end
 
 # Extract data to an array of hashmap records
 records = lines.inject([]) do |rs, l|
-    data = l.split(';').map do |v|
-        # Delete quotes
-        v.tr!('"', '')
-        # Use decimal period instead of comma
-        if v =~ /-?\d+,\d+/
-            v = v.tr(',', '.').to_f
-        end
-        v
-    end
+    data = l.split(';')
 
+    data =
+        data[0..1].map { |v| v.tr('"', '') } +
+        data[2..8].map { |v| v.tr(',', '.').to_f }
+
+    # Prefer '-' to empty string if F-score is missing
     if data[1].empty?
         data[1] = '-'
     end
@@ -114,13 +111,23 @@ records = lines.inject([]) do |rs, l|
         price: data[8],
     }
 
-    # Give points to all companies, but punish those that cheated their way
-    # into the list by having an extreme multiplier the last year, masking
-    # poor performance earlier years.
-    if [:m10to5, :m5to3, :m3to1].map {|k| r[k]}.min >= REQUIRED_YEARLY_MULTIPLIER
-        r[:points] = 0
-    else
-        r[:points] = -1000
+    r[:points] = 0
+
+    r[:weaknesses] = []
+    # To not recommend companies that have accumulated most of their 10-years
+    # value growth in the recent year, require a certain level of growth on
+    # average during each of the period.
+    [:m10to5, :m5to3, :m3to1].each do |k|
+        if r[k] < REQUIRED_YEARLY_MULTIPLIER
+            r[:weaknesses].push(k)
+        end
+    end
+    # Also do not recommend companies that currently have a negative relative
+    # momentum (3 or 6 months)
+    [:rel6, :rel3].each do |k|
+        if r[k] < 1.0
+            r[:weaknesses].push(k)
+        end
     end
 
     rs.push(r)
@@ -130,18 +137,26 @@ end
     records.sort_by! do |r|
         r[key]
     end.each_with_index do |r, i|
-        r[:points] += i
+        if r[:weaknesses].empty?
+            r[:points] += i
+        end
     end
 end
 
 records.sort_by! do |r|
-    r[:points] || -1
+    r[:points]
 end
 
-def print_yearly_percentage(multiplier, orig_color)
-    print "\e[31m" if multiplier < REQUIRED_YEARLY_MULTIPLIER
-    printf "%6.1f%% ", (100.0 * (multiplier - 1.0))
-    print orig_color
+def print_percentage_field(record, key, format)
+    if record[:weaknesses].empty?
+        print "\e[32m"
+    elsif record[:weaknesses].include?(key)
+        print "\e[31m"
+    else
+        print "\e[0m"
+    end
+    printf '%6.1f%% ', (100.0 * (record[key] - 1.0))
+    print "\e[0m"
 end
 
 print "\e[1m"
@@ -149,22 +164,20 @@ puts "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel 
 print "\e[0m"
 records.reverse.each do |r|
     print "%-20s " % r[:company][0,18]
-    print "(FS %s)  " % r[:fscore]
+    print "%3s     " % r[:fscore]
 
-    if [r[:m10to5], r[:m5to3], r[:m3to1], r[:m1to0]].min > REQUIRED_YEARLY_MULTIPLIER
-        color = "\e[32m"
-    else
-        color = "\e[0m"
-    end
-    print color
-    print_yearly_percentage(r[:m10to5], color)
-    print_yearly_percentage(r[:m5to3], color)
-    print_yearly_percentage(r[:m3to1], color)
-    print_yearly_percentage(r[:m1to0], color)
-    print "\e[0m  "
+    print_percentage_field(r, :m10to5, '%6.1f%% ')
+    print_percentage_field(r, :m5to3, '%6.1f%% ')
+    print_percentage_field(r, :m3to1, '%6.1f%% ')
+    print_percentage_field(r, :m1to0, '%6.1f%% ')
 
-    printf "%6.1f%% ", (100.0 * (r[:rel6] - 1.0))
-    printf "%6.1f%%   ", (100.0 * (r[:rel3] - 1.0))
+    print '  '
+
+    print_percentage_field(r, :rel6, '%6.1f%% ')
+    print_percentage_field(r, :rel3, '%6.1f%% ')
+
+    print '  '
+
     print "%8.2f" % r[:price]
     puts
 end
