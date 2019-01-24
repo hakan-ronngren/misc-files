@@ -33,6 +33,9 @@
 
 require 'pp'
 
+REQUIRED_AVERAGE_PERCENTAGE = 15.0
+REQUIRED_AVERAGE_MULTIPLIER = 1 + REQUIRED_AVERAGE_PERCENTAGE / 100.0
+
 REQUIRED_YEARLY_PERCENTAGE = 10.0
 REQUIRED_YEARLY_MULTIPLIER = 1 + REQUIRED_YEARLY_PERCENTAGE / 100.0
 
@@ -113,6 +116,8 @@ records = lines.inject([]) do |rs, l|
         company: data[0],
         # Piotroski F-score
         fscore: data[1],
+        # Average yearly multiplier from year -10 to current
+        m10to0: (1.0 + data[2]) ** 0.1,
         # Average yearly multiplier from year -10 to year -5
         m10to5: ((1.0 + data[2]) / (1.0 + data[3])) ** 0.2,
         # Average yearly multiplier from year -5 to year -3
@@ -132,6 +137,11 @@ records = lines.inject([]) do |rs, l|
     r[:points] = 0
 
     r[:weaknesses] = []
+    # Over the entire period, we require a certain average growth
+    if r[:m10to0] < REQUIRED_AVERAGE_MULTIPLIER
+        r[:weaknesses].push(:m10to0)
+    end
+
     # To not recommend companies that have accumulated most of their 10-years
     # value growth in the recent year, require a certain level of growth on
     # average during each of the period.
@@ -186,11 +196,12 @@ def print_percentage_field(record, key, format)
 end
 
 print "\e[1m"
-print "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel"
+print "Instrument          F-score  10yrs ø  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel"
 print "      price" if show_prices
 print "\e[0m"
 puts
 sums = {
+    sum10to0: 0.0,
     sum10to5: 0.0,
     sum5to3:  0.0,
     sum3to1:  0.0,
@@ -202,6 +213,7 @@ records.reverse.each do |r|
     print "%-20s " % r[:company][0,18]
     print "%3s     " % r[:fscore]
 
+    print_percentage_field(r, :m10to0, '%6.1f%% ')
     print_percentage_field(r, :m10to5, '%6.1f%% ')
     print_percentage_field(r, :m5to3, '%6.1f%% ')
     print_percentage_field(r, :m3to1, '%6.1f%% ')
@@ -215,6 +227,7 @@ records.reverse.each do |r|
     print "%10.2f" % r[:price] if show_prices
     puts
 
+    sums[:sum10to0] += r[:m10to0]
     sums[:sum10to5] += r[:m10to5]
     sums[:sum5to3]  += r[:m5to3]
     sums[:sum3to1]  += r[:m3to1]
@@ -231,6 +244,7 @@ end
 
 print "\e[1m%-20s\e[0m " % 'Average'
 print ' ' * 8
+print "%6.1f%% " % multiplier_as_percentage(sums[:sum10to0] / n)
 print "%6.1f%% " % multiplier_as_percentage(sums[:sum10to5] / n)
 print "%6.1f%% " % multiplier_as_percentage(sums[:sum5to3] / n)
 print "%6.1f%% " % multiplier_as_percentage(sums[:sum3to1] / n)
@@ -243,7 +257,7 @@ puts
 average_rel6 = h[:sum6] / n
 average_rel3 = h[:sum3] / n
 print "\e[1m%-20s\e[0m " % 'Extrapolated yearly'
-print ' ' * 42
+print ' ' * 50
 print "%6.1f%% " % multiplier_as_percentage(average_rel6 ** 2)
 print "%6.1f%% " % multiplier_as_percentage(average_rel3 ** 4)
 puts
