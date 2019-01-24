@@ -33,11 +33,13 @@
 
 require 'pp'
 
-REQUIRED_AVERAGE_PERCENTAGE = 15.0
-REQUIRED_AVERAGE_MULTIPLIER = 1 + REQUIRED_AVERAGE_PERCENTAGE / 100.0
+# Overall requirement
+HARD_REQUIRED_PERCENTAGE = 15.0
+HARD_REQUIRED_MULTIPLIER = 1 + HARD_REQUIRED_PERCENTAGE / 100.0
 
-REQUIRED_YEARLY_PERCENTAGE = 10.0
-REQUIRED_YEARLY_MULTIPLIER = 1 + REQUIRED_YEARLY_PERCENTAGE / 100.0
+# Weaker requirement to allow for some variation
+WEAK_REQUIRED_PERCENTAGE = 10.0
+WEAK_REQUIRED_MULTIPLIER = 1 + WEAK_REQUIRED_PERCENTAGE / 100.0
 
 EXPECTED_HEADER_FIRST = [
     '"Bolagsnamn"',
@@ -137,16 +139,19 @@ records = lines.inject([]) do |rs, l|
     r[:points] = 0
 
     r[:weaknesses] = []
-    # Over the entire period, we require a certain average growth
-    if r[:m10to0] < REQUIRED_AVERAGE_MULTIPLIER
-        r[:weaknesses].push(:m10to0)
+    # Over the entire period, we require a certain average growth, and the
+    # same for the last year.
+    [:m10to0, :m1to0].each do |k|
+        if r[k] < HARD_REQUIRED_MULTIPLIER
+            r[:weaknesses].push(k)
+        end
     end
 
     # To not recommend companies that have accumulated most of their 10-years
     # value growth in the recent year, require a certain level of growth on
     # average during each of the period.
     [:m10to5, :m5to3, :m3to1].each do |k|
-        if r[k] < REQUIRED_YEARLY_MULTIPLIER
+        if r[k] < WEAK_REQUIRED_MULTIPLIER
             r[:weaknesses].push(k)
         end
     end
