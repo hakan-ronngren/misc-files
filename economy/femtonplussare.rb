@@ -59,20 +59,35 @@ EXPECTED_HEADER_SECOND = [
     '"Senaste"',
 ]
 
-unless File.exists?(ARGV[0])
-    STDERR.puts "#{ARGV[0]}: not found"
+file = nil
+show_all = false
+
+while (arg = ARGV.shift) do
+    if ['-a', '--all'].include? arg
+        show_all = true
+    elsif arg[0] == '-'
+        puts "usage: #{File.basename(__FILE__)} [options] <CSV_FILE>"
+        puts "        -a --all     Display even the instruments that do not qualify"
+        exit(1)
+    else
+        file = arg
+    end
+end
+
+unless file && File.exists?(file)
+    STDERR.puts "#{file}: not found"
     exit 1
 end
 
-lines = File.readlines(ARGV[0]).map(&:strip).map {|l| l.force_encoding('ISO-8859-1').encode('UTF-8') }
+lines = File.readlines(file).map(&:strip).map {|l| l.force_encoding('ISO-8859-1').encode('UTF-8') }
 headers = [lines.shift, lines.shift].map {|h| h.split(';')}
 unless headers.first == EXPECTED_HEADER_FIRST
-    puts "#{ARGV[0]}: not a +15% list (wrong first line)"
+    puts "#{file}: not a +15% list (wrong first line)"
     pp headers.first
     exit 1
 end
 unless headers.last == EXPECTED_HEADER_SECOND
-    puts "#{ARGV[0]}: not a +15% list (wrong second line)"
+    puts "#{file}: not a +15% list (wrong second line)"
     pp headers.last
     exit 1
 end
@@ -163,6 +178,8 @@ print "\e[1m"
 puts "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel      price"
 print "\e[0m"
 records.reverse.each do |r|
+    break unless (r[:weaknesses].empty? || show_all)
+
     print "%-20s " % r[:company][0,18]
     print "%3s     " % r[:fscore]
 
