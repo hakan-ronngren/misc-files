@@ -61,10 +61,13 @@ EXPECTED_HEADER_SECOND = [
 
 file = nil
 show_all = false
+show_prices = false
 
 while (arg = ARGV.shift) do
     if ['-a', '--all'].include? arg
         show_all = true
+    elsif ['-p', '--prices'].include? arg
+        show_prices = true
     elsif arg[0] == '-'
         puts "usage: #{File.basename(__FILE__)} [options] <CSV_FILE>"
         puts "        -a --all     Display even the instruments that do not qualify"
@@ -183,8 +186,10 @@ def print_percentage_field(record, key, format)
 end
 
 print "\e[1m"
-puts "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel      price"
+print "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel"
+print "      price" if show_prices
 print "\e[0m"
+puts
 sums = {
     sum10to5: 0.0,
     sum5to3:  0.0,
@@ -207,9 +212,7 @@ records.reverse.each do |r|
     print_percentage_field(r, :rel6, '%6.1f%% ')
     print_percentage_field(r, :rel3, '%6.1f%% ')
 
-    print '  '
-
-    print "%8.2f" % r[:price]
+    print "%10.2f" % r[:price] if show_prices
     puts
 
     sums[:sum10to5] += r[:m10to5]
