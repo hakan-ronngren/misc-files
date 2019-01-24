@@ -158,8 +158,16 @@ end
     end
 end
 
+unless show_all
+    records.select! {|r| r[:weaknesses].empty?}
+end
+
 records.sort_by! do |r|
     r[:points]
+end
+
+def multiplier_as_percentage(m)
+    100 * (m - 1.0)
 end
 
 def print_percentage_field(record, key, format)
@@ -170,16 +178,22 @@ def print_percentage_field(record, key, format)
     else
         print "\e[0m"
     end
-    printf '%6.1f%% ', (100.0 * (record[key] - 1.0))
+    printf '%6.1f%% ', multiplier_as_percentage(record[key])
     print "\e[0m"
 end
 
 print "\e[1m"
 puts "Instrument          F-score  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel      price"
 print "\e[0m"
+sums = {
+    sum10to5: 0.0,
+    sum5to3:  0.0,
+    sum3to1:  0.0,
+    sum1to0:  0.0,
+    sumr6:    0.0,
+    sumr3:    0.0
+}
 records.reverse.each do |r|
-    break unless (r[:weaknesses].empty? || show_all)
-
     print "%-20s " % r[:company][0,18]
     print "%3s     " % r[:fscore]
 
@@ -197,5 +211,38 @@ records.reverse.each do |r|
 
     print "%8.2f" % r[:price]
     puts
+
+    sums[:sum10to5] += r[:m10to5]
+    sums[:sum5to3]  += r[:m5to3]
+    sums[:sum3to1]  += r[:m3to1]
+    sums[:sum1to0]  += r[:m1to0]
+    sums[:sumr6]    += r[:rel6]
+    sums[:sumr3]    += r[:rel3]
 end
-puts "(#{records.length} instruments)"
+n = records.length
+h = records.inject({sum6: 0, sum3: 0}) do |h, r|
+    h[:sum6] += r[:rel6]
+    h[:sum3] += r[:rel3]
+    h
+end
+
+print "\e[1m%-20s\e[0m " % 'Average'
+print ' ' * 8
+print "%6.1f%% " % multiplier_as_percentage(sums[:sum10to5] / n)
+print "%6.1f%% " % multiplier_as_percentage(sums[:sum5to3] / n)
+print "%6.1f%% " % multiplier_as_percentage(sums[:sum3to1] / n)
+print "%6.1f%% " % multiplier_as_percentage(sums[:sum1to0] / n)
+print '  '
+print "%6.1f%% " % multiplier_as_percentage(sums[:sumr6] / n)
+print "%6.1f%% " % multiplier_as_percentage(sums[:sumr3] / n)
+puts
+
+average_rel6 = h[:sum6] / n
+average_rel3 = h[:sum3] / n
+print "\e[1m%-20s\e[0m " % 'Extrapolated yearly'
+print ' ' * 42
+print "%6.1f%% " % multiplier_as_percentage(average_rel6 ** 2)
+print "%6.1f%% " % multiplier_as_percentage(average_rel3 ** 4)
+puts
+
+puts "(%d instruments)" % n
