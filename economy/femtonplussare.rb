@@ -201,7 +201,7 @@ def print_percentage_field(record, key, format)
 end
 
 print "\e[1m"
-print "Instrument          F-score  10yrs ø  10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel"
+print "Instrument          F-score  10yrs ø 10-5y ø  5-3y ø  3-1y ø      1y    6m rel  3m rel"
 print "      price" if show_prices
 print "\e[0m"
 puts
