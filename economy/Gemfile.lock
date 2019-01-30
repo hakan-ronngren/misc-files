@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    eps (0.1.1)
+    ruby-ole (1.2.12.1)
+    spreadsheet (1.1.8)
+      ruby-ole (>= 1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  eps
+  spreadsheet
+
+BUNDLED WITH
+   1.16.4
