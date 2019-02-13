@@ -155,10 +155,10 @@ records.sort_by! do |record|
     -record[:yearly_growth] / record[:rmsd]
 end
 
-puts "\e[1mName                      Growth    RMSD    SNR     Now\e[0m"
+puts "\e[1mName                    %5.1fy ø    RMSD    SNR     Now\e[0m" % years
 records.each do |record|
     print "%-24s " % record[:name]
-    print "%6.1f%% " % (100 * record[:yearly_growth])
+    print "%+6.1f%% " % (100 * record[:yearly_growth])
     print "%6.1f%% " % (100 * record[:rmsd])
     print "%6.2f " % ((record[:yearly_growth] / record[:rmsd]))
     print "%+6.1f%% " % (100 * record[:price_vs_trend])
