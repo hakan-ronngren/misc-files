@@ -133,7 +133,7 @@ argv.each do |input_file|
     if export
         output_file = File.join(
             File.dirname(input_file),
-            File.basename(input_file, '.xls') + '-with_trend.csv')
+            input_file.gsub(/\..*/, '') + '-with_trend.csv')
 
         File.open(output_file, 'w') do |f|
             #f.puts("\"%s\"\t\"\"\t\"\"" % File.basename(output_file))
