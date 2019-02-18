@@ -157,10 +157,18 @@ end
 
 puts "\e[1mName                    %5.1fy ø    RMSD    SNR     Now\e[0m" % years
 records.each do |record|
+    snr = record[:yearly_growth] / record[:rmsd]
+    if snr > 1.5
+        print "\e[32m"
+    elsif snr > 1.0
+        print "\e[33m"
+    else
+        print "\e[31m"
+    end
     print "%-24s " % record[:name]
     print "%+6.1f%% " % (100 * record[:yearly_growth])
     print "%6.1f%% " % (100 * record[:rmsd])
-    print "%6.2f " % ((record[:yearly_growth] / record[:rmsd]))
+    print "%6.2f " % snr
     print "%+6.1f%% " % (100 * record[:price_vs_trend])
-    puts
+    puts "\e[0m"
 end
