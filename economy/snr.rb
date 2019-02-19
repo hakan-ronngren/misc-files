@@ -48,6 +48,10 @@ def import_borsdata_excel(input_file, years)
         today ||= day
         break if day < today - 365.25 * years
         price = row[4].to_f
+        # Disregard invalid points
+        next unless day > 10000 &&
+            day <= Time.now.to_i / 86400 &&
+            price > 0.0
         data.push({date: day, log_price: Math.log10(price)})
     end
 
