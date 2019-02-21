@@ -159,7 +159,7 @@ records.sort_by! do |record|
     -record[:yearly_growth] / record[:rmsd]
 end
 
-puts "\e[1mName                    %5.1fy ø    RMSD    SNR     Now\e[0m" % years
+puts "\e[1mName                   %3d yrs ø    RMSD    SNR     Now\e[0m" % years
 records.each do |record|
     snr = record[:yearly_growth] / record[:rmsd]
     if snr > 1.5 && record[:price_vs_trend].abs <= record[:rmsd]
