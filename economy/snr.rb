@@ -26,6 +26,7 @@ def fail_usage()
 end
 
 def import_borsdata_excel(input_file, years)
+    Spreadsheet.client_encoding = 'ISO-8859-1'
     book = Spreadsheet.open(input_file)
     sheet = book.worksheets.first
 
@@ -93,8 +94,6 @@ while argv[0].start_with?('-') do
     argv.shift
 end
 
-Spreadsheet.client_encoding = 'ISO-8859-1'
-
 records = []
 argv.each do |input_file|
     unless File.file?(input_file)
@@ -113,7 +112,8 @@ argv.each do |input_file|
     # Adapt a line to the logarithmic data
     model = Eps::Regressor.new(data, target: :log_price)
 
-    record = {name: input_file.split('-')[1]}
+    record = {}
+    record[:ticker], record[:name] = input_file.split('-')
 
     record[:yearly_growth] = -1 +
         10 ** model.predict(date: 365) /
@@ -159,7 +159,7 @@ records.sort_by! do |record|
     -record[:yearly_growth] / record[:rmsd]
 end
 
-puts "\e[1mName                   %3d yrs ø    RMSD    SNR     Now\e[0m" % years
+puts "\e[1mTicker     Name                   %3d yrs ø    RMSD    SNR     Now\e[0m" % years
 records.each do |record|
     snr = record[:yearly_growth] / record[:rmsd]
     if snr > 1.5 && record[:price_vs_trend].abs <= record[:rmsd]
@@ -169,6 +169,7 @@ records.each do |record|
     else
         print "\e[33m"
     end
+    print "%-10s " % record[:ticker]
     print "%-24s " % record[:name]
     print "%+6.1f%% " % (100 * record[:yearly_growth])
     print "%6.1f%% " % (100 * record[:rmsd])
