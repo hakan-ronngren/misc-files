@@ -56,7 +56,7 @@ def import_borsdata_excel(input_file, years)
         data.push({date: day, log_price: Math.log10(price)})
     end
 
-    data
+    return [data, sheet.rows[1][0].to_s]
 end
 
 def import_yahoo_csv(input_file, years)
@@ -78,11 +78,11 @@ def import_yahoo_csv(input_file, years)
         data.push({date: day, log_price: Math.log10(price)})
     end
 
-    data
+    return [data, lines.first.split(',')[0]]
 end
 
 while argv[0].start_with?('-') do
-    if argv[0] == '--years' && argv[1].to_i > 0
+    if argv[0] == '--years' && argv[1].to_f > 0
         argv.shift
         years = argv[0].to_f
         fail_usage if years <= 0.0  # nil or anything else than a positive float
@@ -102,9 +102,9 @@ argv.each do |input_file|
     end
 
     if input_file.end_with?('.xls')
-        data = import_borsdata_excel(input_file, years)
+        data, updated = import_borsdata_excel(input_file, years)
     elsif input_file.end_with?('.csv')
-        data = import_yahoo_csv(input_file, years)
+        data, updated = import_yahoo_csv(input_file, years)
     else
         fail_usage
     end
@@ -114,6 +114,7 @@ argv.each do |input_file|
 
     record = {}
     record[:ticker], record[:name] = input_file.split('-')
+    record[:updated] = updated
 
     record[:yearly_growth] = -1 +
         10 ** model.predict(date: 365) /
@@ -159,7 +160,7 @@ records.sort_by! do |record|
     -record[:yearly_growth] / record[:rmsd]
 end
 
-puts "\e[1mTicker     Name                   %3d yrs ø    RMSD    SNR     Now\e[0m" % years
+puts "\e[1mTicker     Name                   %3d yrs ø    RMSD    SNR     Now      Updated\e[0m" % years
 records.each do |record|
     snr = record[:yearly_growth] / record[:rmsd]
     if snr > 1.5 && record[:price_vs_trend].abs <= record[:rmsd]
@@ -175,5 +176,6 @@ records.each do |record|
     print "%6.1f%% " % (100 * record[:rmsd])
     print "%6.2f " % snr
     print "%+6.1f%% " % (100 * record[:price_vs_trend])
+    print "%12s" % record[:updated]
     puts "\e[0m"
 end
