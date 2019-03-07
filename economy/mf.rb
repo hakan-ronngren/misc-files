@@ -25,7 +25,7 @@ dkksek = nil
 eursek = nil
 noksek = nil
 invest = nil
-max_count = 20
+$max_count = 20
 excluded_names = []
 
 SELECTORS = [
@@ -74,7 +74,7 @@ def fail_usage
     puts "        --nok-sek <PRICE_IN_SEK>"
     puts "        --invest  <SEK_PER_INSTRUMENT>"
     puts "        Optional flags:"
-    puts "        --max-count <NUMBER> (default: #{max_count})"
+    puts "        --max-count <NUMBER> (default: #{$max_count})"
     puts "        --exclude <NAME>,<NAME>... (default: none)"
     exit(1)
 end
@@ -95,7 +95,7 @@ while argv[0] do
         invest = argv[0].to_f
     elsif argv[0] == '--max-count' && argv[1].to_i > 0
         argv.shift
-        max_count = argv[0].to_i
+        $max_count = argv[0].to_i
     elsif argv[0] == '--exclude'
         argv.shift
         excluded_names = argv[0].split(',')
@@ -163,16 +163,20 @@ records = lines.inject([]) do |rs, l|
 
     country = data[6]
     if country == 'Sverige'
-        nil  # correct price
+        r[:price_sek] = r[:price]
+        r[:currency] = 'sek'
     elsif country == 'Danmark'
         r[:ev] *= dkksek
-        r[:price] *= dkksek
+        r[:price_sek] = r[:price] * dkksek
+        r[:currency] = 'dkk'
     elsif country == 'Finland'
         r[:ev] *= eursek
-        r[:price] *= eursek
+        r[:price_sek] = r[:price] * eursek
+        r[:currency] = 'eur'
     elsif country == 'Norge'
         r[:ev] *= noksek
-        r[:price] *= noksek
+        r[:price_sek] = r[:price] * noksek
+        r[:currency] = 'nok'
     else
         raise "unexpected country: " + country
     end
@@ -183,13 +187,16 @@ end
 records.select! {|r| SELECTORS.all? {|s| s.call(r)}}
 records.sort_by! {|r| r[:mf_rank]}
 
-puts "Instrument                    Buy      Price  F-score  Business"
-puts "--------------------------------------------------------------------------------"
-records.first(max_count).each do |r|
+puts "Instrument                    Buy          Price  F-score  Business"
+puts "------------------------------------------------------------------------------------"
+invested_sum = records.first($max_count).each.inject(0.0) do |sum, r|
+    n = (invest / r[:price_sek]).floor
     print "%-27s " % r[:company][0,25]
-    print "%5d  " % (invest / r[:price]).floor
-    print "%9.2f   " % r[:price]
+    print "%5d  " % n
+    print "%9.2f %s   " % [r[:price], r[:currency]]
     print "%3s     " % r[:f_score]
     print r[:business]
     puts
+    sum + n * r[:price_sek]
 end
+puts "Totally invested: %.2f sek (fees excluded)" % invested_sum
