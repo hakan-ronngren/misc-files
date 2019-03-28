@@ -67,9 +67,16 @@ def import_yahoo_csv(input_file, years)
     end
     lines.shift
 
+    # Some yahoo csv files are in ascending date order, others in
+    # descending. We expect descending.
+    d0, d1 = [lines[0].split(',').first, lines[1].split(',').first]
+    if d0 < d1
+        lines.reverse!
+    end
+
     data = []
     today = nil
-    lines.reverse.each do |line|
+    lines.each do |line|
         row = line.split(',')
         day = Date.parse(row[0]).to_time.to_i / 86400
         today ||= day
@@ -138,7 +145,7 @@ argv.each do |input_file|
     if export
         output_file = File.join(
             File.dirname(input_file),
-            input_file.gsub(/\..*/, '') + '-with_trend.csv')
+            input_file.gsub(/\.[^\.]*$/, '') + '-with_trend.csv')
 
         File.open(output_file, 'w') do |f|
             #f.puts("\"%s\"\t\"\"\t\"\"" % File.basename(output_file))
