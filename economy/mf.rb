@@ -177,12 +177,10 @@ records = lines.inject([]) do |rs, l|
         r[:ev] *= noksek
         r[:price_sek] = r[:price] * noksek
         r[:currency] = 'nok'
-    else
-        raise "unexpected country: " + country
     end
 
     rs.push(r)
-end
+end.select {|r| r[:currency]}
 
 records.select! {|r| SELECTORS.all? {|s| s.call(r)}}
 records.sort_by! {|r| r[:mf_rank]}
