@@ -170,10 +170,7 @@ argv.each do |file_or_ticker|
     records.push(record)
 
     if export
-        output_file = File.join(
-            File.dirname(input_file),
-            input_file.gsub(/\.[^\.]*$/, '') + '-with_trend.csv')
-
+        output_file = File.expand_path("#{ticker}-#{name}-Price-with_trend.csv", Dir.pwd)
         File.open(output_file, 'w') do |f|
             #f.puts("\"%s\"\t\"\"\t\"\"" % File.basename(output_file))
             f.puts("\"%s\"" % File.basename(output_file))
