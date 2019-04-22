@@ -9,7 +9,12 @@
 
 require 'date'
 require 'eps'           # https://github.com/ankane/eps
+require 'json'
+require 'open-uri'
 require 'spreadsheet'   # https://github.com/zdavatz/spreadsheet
+
+$LOAD_PATH.push(File.expand_path('lib', Dir.pwd))
+require 'borsdata-client'
 
 DEFAULT_YEARS = 10
 
@@ -19,10 +24,25 @@ years = DEFAULT_YEARS
 export = false
 
 def fail_usage()
-    puts "usage: #{__FILE__} [--years <integer>] <BORSDATA-Price.xls> [...]"
+    puts "usage: #{__FILE__} [--years <integer>] <TICKER_OR_PRICE_FILE> [...]"
     puts "    --years <float>        history length (default #{DEFAULT_YEARS}"
     puts "    --export               export trend data as csv"
     exit 1
+end
+
+def import_borsdata_instrument(instrument, years)
+    data = []
+    updated = '0'
+    today = nil
+    instrument.prices.reverse.each do |row|
+        day = row[:date].to_time.to_i / 86400
+        today ||= day
+        break if day < today - 365.25 * years
+        data.push({date: day, log_price: Math.log10(row[:close])})
+        updated = [updated, row[:date].to_s].max
+    end
+    data.reverse! if data.first[:date] < data.last[:date]
+    return [data, updated]
 end
 
 def import_borsdata_excel(input_file, years)
@@ -37,8 +57,6 @@ def import_borsdata_excel(input_file, years)
         puts "#{input_file}: not the expected Börsdata Excel format"
         exit 1
     end
-
-    record = {}
 
     # Populate the data array with logarithmic data.
     # (Note: map, inject etc don't like break, they would return nil)
@@ -102,26 +120,35 @@ while argv[0].start_with?('-') do
 end
 
 records = []
-argv.each do |input_file|
-    unless File.file?(input_file)
-        puts "#{input_file}: not found, ignoring this file"
-        next
-    end
+argv.each do |file_or_ticker|
+    instrument = Borsdata::Instrument.by_ticker(file_or_ticker)
 
-    if input_file.end_with?('.xls')
-        data, updated = import_borsdata_excel(input_file, years)
-    elsif input_file.end_with?('.csv')
-        data, updated = import_yahoo_csv(input_file, years)
+    if File.file?(file_or_ticker)
+        ticker, name = file_or_ticker.split('-')
+        if file_or_ticker.end_with?('.xls')
+            data, updated = import_borsdata_excel(file_or_ticker, years)
+        elsif file_or_ticker.end_with?('.csv')
+            data, updated = import_yahoo_csv(file_or_ticker, years)
+        else
+            fail_usage
+        end
+    elsif instrument
+        ticker = file_or_ticker
+        name = instrument.name
+        data, updated = import_borsdata_instrument(instrument, years)
     else
-        fail_usage
+        puts "#{file_or_ticker}: not found, ignoring this instrument"
+        next
     end
 
     # Adapt a line to the logarithmic data
     model = Eps::Regressor.new(data, target: :log_price)
 
-    record = {}
-    record[:ticker], record[:name] = input_file.split('-')
-    record[:updated] = updated
+    record = {
+        ticker:  ticker,
+        name:    name,
+        updated: updated
+    }
 
     record[:yearly_growth] = -1 +
         10 ** model.predict(date: 365) /
