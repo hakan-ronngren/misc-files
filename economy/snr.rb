@@ -35,13 +35,25 @@ class Record
 
     def initialize(identifier)
         @identifier = identifier
-        calculate
+        if cache_up_to_date?
+            load_from_cache
+        else
+            calculate
+        end
     end
 
     # Import prices from whatever data source we have and return them (no need
     # to keep all that temporary data in an attribute).
     def import
-        raise "#{self.class.name}::import must be overridden"
+        raise "#{self.class.name}::#{__method__} must be overridden"
+    end
+
+    def load_from_cache
+        raise "#{self.class.name}::#{__method__} must be overridden"
+    end
+
+    def cache_up_to_date?
+        false
     end
 
     private
@@ -67,6 +79,8 @@ class Record
             10 ** data.first[:log_price] /
             10 ** model.predict(date: data.first[:date])
 
+        write_to_cache
+
         if $export
             output_file = File.expand_path("#{@ticker}-#{@name}-Price-with_trend.csv", Dir.pwd)
             File.open(output_file, 'w') do |f|
@@ -82,6 +96,42 @@ class Record
                 end
             end
         end
+    end
+end
+
+class FileBasedRecord < Record
+    def cache_file
+        "/tmp/#{File.basename @identifier}.years=#{$years}.cache"
+    end
+
+    def cache_up_to_date?
+        File.exists?(cache_file) &&
+            File.new(cache_file).mtime > File.new(@identifier).mtime
+    end
+
+    def load_from_cache
+        puts "#{@identifier}: loading from cache"
+        values = JSON.parse(File.read(cache_file))
+        @ticker         = values['ticker']
+        @name           = values['name']
+        @updated        = values['updated']
+        @f_score        = values['f_score']
+        @yearly_growth  = values['yearly_growth']
+        @rmsd           = values['rmsd']
+        @price_vs_trend = values['price_vs_trend']
+    end
+
+    def write_to_cache
+        h = {
+            ticker:         @ticker,
+            name:           @name,
+            updated:        @updated,
+            yearly_growth:  @yearly_growth,
+            rmsd:           @rmsd,
+            price_vs_trend: @price_vs_trend,
+            f_score:        @f_score
+        }
+        File.write(cache_file, h.to_json + "\n")
     end
 end
 
@@ -107,9 +157,9 @@ class BorsdataInstrumentRecord < Record
     end
 end
 
-class BorsdataExcelRecord < Record
+class BorsdataExcelRecord < FileBasedRecord
     def import
-        @ticker, @name = @identifier.split('-')
+        @ticker, @name = File.basename(@identifier).split('-')
         Spreadsheet.client_encoding = 'ISO-8859-1'
         book = Spreadsheet.open(@identifier)
         sheet = book.worksheets.first
@@ -143,7 +193,7 @@ class BorsdataExcelRecord < Record
     end
 end
 
-class YahooCSVRecord < Record
+class YahooCSVRecord < FileBasedRecord
     def import
         @ticker, @name = @identifier.split('-')
         lines = File.readlines(@identifier).map(&:strip)
