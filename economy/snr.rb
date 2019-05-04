@@ -52,6 +52,10 @@ class Record
         raise "#{self.class.name}::#{__method__} must be overridden"
     end
 
+    def write_to_cache
+        # no-op
+    end
+
     def cache_up_to_date?
         false
     end
@@ -110,7 +114,6 @@ class FileBasedRecord < Record
     end
 
     def load_from_cache
-        puts "#{@identifier}: loading from cache"
         values = JSON.parse(File.read(cache_file))
         @ticker         = values['ticker']
         @name           = values['name']
