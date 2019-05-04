@@ -42,7 +42,7 @@ def import_borsdata_instrument(instrument, years)
         updated = [updated, row[:date].to_s].max
     end
     data.reverse! if data.first[:date] < data.last[:date]
-    return [data, updated]
+    return [data, updated, instrument.f_score]
 end
 
 def import_borsdata_excel(input_file, years)
@@ -135,7 +135,7 @@ argv.each do |file_or_ticker|
     elsif instrument
         ticker = file_or_ticker
         name = instrument.name
-        data, updated = import_borsdata_instrument(instrument, years)
+        data, updated, f_score = import_borsdata_instrument(instrument, years)
     else
         puts "#{file_or_ticker}: not found, ignoring this instrument"
         next
@@ -147,7 +147,8 @@ argv.each do |file_or_ticker|
     record = {
         ticker:  ticker,
         name:    name,
-        updated: updated
+        updated: updated,
+        f_score: f_score
     }
 
     record[:yearly_growth] = -1 +
@@ -191,10 +192,16 @@ records.sort_by! do |record|
     -record[:yearly_growth] / record[:rmsd]
 end
 
-puts "\e[1mTicker     Name                   %3d yrs ø    RMSD    SNR     Now      Updated\e[0m" % years
+puts "\e[1mTicker     Name               %3d yrs ø    RMSD    SNR     Now   FS     Updated\e[0m" % years
+yearly_growths = []
 records.each do |record|
+    # Unfortunately, Börsdata reports 0 both when it really is 0 and when it is not applicable,
+    # e.g. for real estate businesses. We therefore prefer to leave the value empty instead.
+    f_score = record[:f_score] && record[:f_score] > 0 ? record[:f_score] : nil
     snr = record[:yearly_growth] / record[:rmsd]
-    if snr > 1.5 && record[:price_vs_trend].abs <= record[:rmsd]
+    if record[:yearly_growth] >= 0.2 &&
+            snr > 1.5 &&
+            record[:price_vs_trend].abs <= record[:rmsd]
         print "\e[32m"
     elsif snr <= 1.0
         print "\e[31m"
@@ -202,11 +209,16 @@ records.each do |record|
         print "\e[33m"
     end
     print "%-10s " % record[:ticker]
-    print "%-24s " % record[:name]
+    print "%-20s " % record[:name][0..19]
     print "%+6.1f%% " % (100 * record[:yearly_growth])
     print "%6.1f%% " % (100 * record[:rmsd])
     print "%6.2f " % snr
     print "%+6.1f%% " % (100 * record[:price_vs_trend])
+    print "%4s" % f_score.to_s
     print "%12s" % record[:updated]
     puts "\e[0m"
+    yearly_growths << record[:yearly_growth]
 end
+
+average_yearly_growth = yearly_growths.inject(0.0) {|sum, yg| sum + yg} / yearly_growths.length
+puts "Average:                        %+6.1f%%" % (100 * average_yearly_growth)
