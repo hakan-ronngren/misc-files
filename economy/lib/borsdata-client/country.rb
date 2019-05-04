@@ -25,10 +25,6 @@ module Borsdata
             @name = h['name']
         end
 
-        def to_s
-            @name
-        end
-
         class << self
             private
 

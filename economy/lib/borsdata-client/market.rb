@@ -19,10 +19,6 @@ module Borsdata
             @exchangeName = h['exchangeName']
         end
 
-        def to_s
-            "#{exchangeName}/#{name} (#{country})"
-        end
-        
         class << self
             private 
 

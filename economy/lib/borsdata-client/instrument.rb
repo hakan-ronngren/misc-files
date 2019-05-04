@@ -21,8 +21,9 @@ module Borsdata
             @prices = nil
         end
 
-        def to_s
-            "Instrument: isin=#{@isin}, ticker=#{@ticker}, name=#{@name}"
+        def f_score
+            f = FScore.by_instrument_id(@id)
+            f ? f.value : nil
         end
 
         def prices
