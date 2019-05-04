@@ -48,16 +48,36 @@ class Record
         raise "#{self.class.name}::#{__method__} must be overridden"
     end
 
-    def load_from_cache
-        raise "#{self.class.name}::#{__method__} must be overridden"
-    end
-
-    def write_to_cache
-        # no-op
+    def cache_file
+        "/tmp/#{File.basename @identifier}.years=#{$years}.cache"
     end
 
     def cache_up_to_date?
         false
+    end
+
+    def load_from_cache
+        values = JSON.parse(File.read(cache_file))
+        @ticker         = values['ticker']
+        @name           = values['name']
+        @updated        = values['updated']
+        @f_score        = values['f_score']
+        @yearly_growth  = values['yearly_growth']
+        @rmsd           = values['rmsd']
+        @price_vs_trend = values['price_vs_trend']
+    end
+
+    def write_to_cache
+        h = {
+            ticker:         @ticker,
+            name:           @name,
+            updated:        @updated,
+            yearly_growth:  @yearly_growth,
+            rmsd:           @rmsd,
+            price_vs_trend: @price_vs_trend,
+            f_score:        @f_score
+        }
+        File.write(cache_file, h.to_json + "\n")
     end
 
     private
@@ -104,41 +124,18 @@ class Record
 end
 
 class FileBasedRecord < Record
-    def cache_file
-        "/tmp/#{File.basename @identifier}.years=#{$years}.cache"
-    end
-
     def cache_up_to_date?
         File.exists?(cache_file) &&
             File.new(cache_file).mtime > File.new(@identifier).mtime
     end
-
-    def load_from_cache
-        values = JSON.parse(File.read(cache_file))
-        @ticker         = values['ticker']
-        @name           = values['name']
-        @updated        = values['updated']
-        @f_score        = values['f_score']
-        @yearly_growth  = values['yearly_growth']
-        @rmsd           = values['rmsd']
-        @price_vs_trend = values['price_vs_trend']
-    end
-
-    def write_to_cache
-        h = {
-            ticker:         @ticker,
-            name:           @name,
-            updated:        @updated,
-            yearly_growth:  @yearly_growth,
-            rmsd:           @rmsd,
-            price_vs_trend: @price_vs_trend,
-            f_score:        @f_score
-        }
-        File.write(cache_file, h.to_json + "\n")
-    end
 end
 
 class BorsdataInstrumentRecord < Record
+    def cache_up_to_date?
+        File.exists?(cache_file) &&
+            File.new(cache_file).mtime > Time.now - 3600
+    end
+
     def import
         instrument = Borsdata::Instrument.by_ticker(@identifier)
         @ticker = @identifier
