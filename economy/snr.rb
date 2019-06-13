@@ -178,7 +178,7 @@ class BorsdataExcelRecord < FileBasedRecord
         sheet.ensure_rows_read
 
         unless [sheet.rows.first[0], sheet.rows.first[4]] == %w(Date Closeprice)
-            puts "#{input_file}: not the expected Börsdata Excel format"
+            puts "#{@identifier}: not the expected Börsdata Excel format"
             exit 1
         end
 
@@ -207,7 +207,7 @@ class YahooCSVRecord < FileBasedRecord
         @ticker, @name = @identifier.split('-')
         lines = File.readlines(@identifier).map(&:strip)
         if lines.first != 'Date,Open,High,Low,Close,Adj Close,Volume'
-            puts "#{input_file}: not the expected Yahoo csv format"
+            puts "#{@identifier}: not the expected Yahoo csv format"
             exit 1
         end
         lines.shift
