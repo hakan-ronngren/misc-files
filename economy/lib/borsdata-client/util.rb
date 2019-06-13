@@ -30,13 +30,17 @@ module Borsdata
                     Time.now - File.mtime(cache_file) < max_age_seconds
                 JSON.parse(File.read(cache_file))
             else
-                t1 = Time.now
                 uri = "https://#{API_HOST}#{path}?authKey=#{config['api_key']}"
-                data = JSON.parse(open(uri).read)
+                data = nil
+                begin
+                    data = JSON.parse(open(uri).read)
+                rescue SocketError
+                    puts 'Failed to connect to the Börsdata API'
+                    exit 1
+                end
                 FileUtils.mkdir_p(File.dirname(cache_file))
                 File.write(cache_file, JSON.pretty_generate(data))
-                t2 = Time.now
-                sleep [0.0, 0.55 - (t2 - t1)].max    # Max 2 calls per second
+                sleep 0.55       # Max 2 calls per second
                 data
             end
         end

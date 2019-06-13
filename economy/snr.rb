@@ -11,6 +11,7 @@ require 'date'
 require 'eps'           # https://github.com/ankane/eps
 require 'json'
 require 'open-uri'
+require 'time'
 require 'spreadsheet'   # https://github.com/zdavatz/spreadsheet
 
 $LOAD_PATH.push(File.expand_path('lib', Dir.pwd))
@@ -138,16 +139,24 @@ class BorsdataInstrumentRecord < Record
 
     def import
         instrument = Borsdata::Instrument.by_ticker(@identifier)
+        raise "No Borsdata instrument with ticker #{@identifier}" unless instrument
         @ticker = @identifier
         @name = instrument.name
-        raise "No Borsdata instrument with ticker #{@identifier}" unless instrument
         data = []
         @updated = '0'
         today = nil
+
+        # TODO: use split info from the API instead of hardcoding split knowledge
+        sagax_b_split_time_2019 = Time.parse('2019-05-30').to_i / 86400
+
         instrument.prices.reverse.each do |row|
             day = row[:date].to_time.to_i / 86400
             today ||= day
             break if day < today - 365.25 * $years
+            # TODO: see the comment about splits above
+            if @ticker == 'SAGA B' && day < sagax_b_split_time_2019
+                row[:close] = row[:close] / 2.0
+            end
             data.push({date: day, log_price: Math.log10(row[:close])})
             @updated = [@updated, row[:date].to_s].max
         end
@@ -290,5 +299,7 @@ records.each do |record|
     yearly_growths << record.yearly_growth
 end
 
-average_yearly_growth = yearly_growths.inject(0.0) {|sum, yg| sum + yg} / yearly_growths.length
-puts "Average:                        %+6.1f%%" % (100 * average_yearly_growth)
+if yearly_growths.any?
+    average_yearly_growth = yearly_growths.inject(0.0) {|sum, yg| sum + yg} / yearly_growths.length
+    puts "Average:                        %+6.1f%%" % (100 * average_yearly_growth)
+end
