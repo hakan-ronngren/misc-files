@@ -138,9 +138,10 @@ class BorsdataInstrumentRecord < Record
     end
 
     def import
-        instrument = Borsdata::Instrument.by_ticker(@identifier)
-        raise "No Borsdata instrument with ticker #{@identifier}" unless instrument
-        @ticker = @identifier
+        @ticker = @identifier.upcase
+        puts "searching for #{@ticker}"
+        instrument = Borsdata::Instrument.by_ticker(@ticker)
+        raise "No Borsdata instrument with ticker #{@ticker}" unless instrument
         @name = instrument.name
         data = []
         @updated = '0'
@@ -168,10 +169,11 @@ end
 
 class BorsdataExcelRecord < FileBasedRecord
     def import
-        @ticker, @name = File.basename(@identifier).split('-')
+        @ticker, @name = File.basename(@identifier, '.xls').split('-')
         Spreadsheet.client_encoding = 'ISO-8859-1'
         book = Spreadsheet.open(@identifier)
-        sheet = book.worksheets.first
+        sheet = book.worksheet('PriceWeek')           # new books have multiple sheets
+        sheet = book.worksheets.first if sheet.nil?   # old ones have only one
         @updated = sheet.rows[1][0].to_s
 
         # Prevent a race condition
@@ -187,7 +189,11 @@ class BorsdataExcelRecord < FileBasedRecord
         data = []
         today = nil
         sheet.rows[1..-1].each do |row|
-            day = row[0].to_time.to_i / 86400
+            day = if row[0].respond_to?(:to_time)
+                      row[0].to_time      # old books have an Excel Date
+                  else
+                      Time.parse(row[0])  # new ones have a String
+                  end.to_i / 86400
             today ||= day
             break if day < today - 365.25 * $years
             price = row[4].to_f
@@ -198,7 +204,7 @@ class BorsdataExcelRecord < FileBasedRecord
             data.push({date: day, log_price: Math.log10(price)})
         end
 
-        return data 
+        return data
     end
 end
 
@@ -258,7 +264,7 @@ argv.each do |arg|
         else
             fail_usage
         end
-    elsif Borsdata::Instrument.by_ticker(arg)
+    elsif Borsdata::Instrument.by_ticker(arg.upcase)
         records.push(BorsdataInstrumentRecord.new(arg))
     else
         puts "#{arg}: not found, ignoring this instrument"
