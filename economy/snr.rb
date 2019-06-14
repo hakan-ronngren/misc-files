@@ -139,7 +139,6 @@ class BorsdataInstrumentRecord < Record
 
     def import
         @ticker = @identifier.upcase
-        puts "searching for #{@ticker}"
         instrument = Borsdata::Instrument.by_ticker(@ticker)
         raise "No Borsdata instrument with ticker #{@ticker}" unless instrument
         @name = instrument.name
