@@ -36,7 +36,7 @@ class Record
 
     def initialize(identifier)
         @identifier = identifier
-        if cache_up_to_date?
+        if cache_up_to_date? && ! $export   # TODO: become able to export also from cache
             load_from_cache
         else
             calculate
