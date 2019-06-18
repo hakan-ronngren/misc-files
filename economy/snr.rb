@@ -57,6 +57,10 @@ class Record
         false
     end
 
+    def snr
+        @yearly_growth / @rmsd
+    end
+
     def load_from_cache
         values = JSON.parse(File.read(cache_file))
         @ticker         = values['ticker']
@@ -84,10 +88,10 @@ class Record
     private
 
     def calculate
-        data = import
+        import
 
         # Adapt a line to the logarithmic data
-        model = Eps::Regressor.new(data, target: :log_price)
+        model = Eps::Regressor.new(@data, target: :log_price)
 
         @yearly_growth = -1 +
             10 ** model.predict(date: 365) /
@@ -95,14 +99,14 @@ class Record
 
         @rmsd = -1 +
             10 ** Math.sqrt(
-                data.inject(0) do |sum, item|
+                @data.inject(0) do |sum, item|
                     sum + (item[:log_price] - model.predict(date: item[:date])) ** 2
-                end / data.length)
+                end / @data.length)
 
         # Current price vs. trend
         @price_vs_trend = -1 +
-            10 ** data.first[:log_price] /
-            10 ** model.predict(date: data.first[:date])
+            10 ** @data.first[:log_price] /
+            10 ** model.predict(date: @data.first[:date])
 
         write_to_cache
 
@@ -112,7 +116,7 @@ class Record
                 #f.puts("\"%s\"\t\"\"\t\"\"" % File.basename(output_file))
                 f.puts("\"%s\"" % File.basename(output_file))
                 f.puts "\"Date\"\t\"Close price\"\t\"Predicted price\""
-                data.each do |item|
+                @data.each do |item|
                     f.puts "\"%s\"\t%.2f\t%.2f" % [
                         Time.at(86400 * item[:date]).strftime('%Y-%m-%d'),
                         10 ** item[:log_price],
@@ -142,40 +146,66 @@ class BorsdataInstrumentRecord < Record
         instrument = Borsdata::Instrument.by_ticker(@ticker)
         raise "No Borsdata instrument with ticker #{@ticker}" unless instrument
         @name = instrument.name
-        data = []
+        @data = []
         @updated = '0'
         today = nil
-
-        # TODO: use split info from the API instead of hardcoding split knowledge
-        sagax_b_split_time_2019 = Time.parse('2019-05-30').to_i / 86400
 
         instrument.prices.reverse.each do |row|
             day = row[:date].to_time.to_i / 86400
             today ||= day
             break if day < today - 365.25 * $years
-            # TODO: see the comment about splits above
-            if @ticker == 'SAGA B' && day < sagax_b_split_time_2019
-                row[:close] = row[:close] / 2.0
-            end
-            data.push({date: day, log_price: Math.log10(row[:close])})
+            @data.push({date: day, log_price: Math.log10(row[:close])})
             @updated = [@updated, row[:date].to_s].max
         end
-        data.reverse! if data.first[:date] < data.last[:date]
+        @data.reverse! if @data.first[:date] < @data.last[:date]
         @f_score = instrument.f_score
-        return data
     end
 end
 
 class BorsdataExcelRecord < FileBasedRecord
+    def get_report_row(sheet, ix, expected_name)
+        row = sheet.rows[ix]
+        unless row[0] == expected_name
+            raise "Expected row #{ix} to be #{expected_name}"
+        end
+        row
+    end
+
     def import
         @ticker, @name = File.basename(@identifier, '.xls').split('-')
-        Spreadsheet.client_encoding = 'ISO-8859-1'
+        Spreadsheet.client_encoding = 'UTF-8'
         book = Spreadsheet.open(@identifier)
+
+        sheet = book.worksheet('R12')
+        if sheet
+            sheet.ensure_rows_read
+            turnover_row = get_report_row(sheet, 1, 'Omsättning')
+            earnings_row = get_report_row(sheet, 5, 'Resultat Hänföring Aktieägare')
+            no_of_shares_row = get_report_row(sheet, 7, 'Antal Aktier')
+            oms_assets_row = get_report_row(sheet, 15, 'Summa Omsättningstillgångar')
+            total_assets_row = get_report_row(sheet, 16, 'Summa Tillgångar')
+            long_debt_row = get_report_row(sheet, 18, 'Långfristiga Skulder')
+            short_debt_row = get_report_row(sheet, 19, 'Kortfristiga Skulder')
+            oper_cashflow_row = get_report_row(sheet, 23, 'Kassaf LöpandeVerk')
+            margin_row = get_report_row(sheet, 45, 'Rörelsemarginal')
+            roa_row = get_report_row(sheet, 52, 'Avkastning på T')
+            @f_score = [
+                earnings_row.last > 0,
+                oper_cashflow_row.last > 0,
+                roa_row.last > roa_row[-5],
+                oper_cashflow_row.last > earnings_row.last,
+                (long_debt_row.last / total_assets_row.last) < (long_debt_row[-5] / total_assets_row[-5]),
+                (oms_assets_row.last / short_debt_row.last) > (oms_assets_row[-5] / short_debt_row[-5]),
+                no_of_shares_row.last <= no_of_shares_row[-5],
+                margin_row.last > margin_row[-5],
+                (turnover_row.last / total_assets_row.last) > (turnover_row[-5] / total_assets_row[-5]),
+            ].select {|v| v}.count
+        end
+
         sheet = book.worksheet('PriceWeek')           # new books have multiple sheets
         sheet = book.worksheets.first if sheet.nil?   # old ones have only one
         @updated = sheet.rows[1][0].to_s
 
-        # Prevent a race condition
         sheet.ensure_rows_read
 
         unless [sheet.rows.first[0], sheet.rows.first[4]] == %w(Date Closeprice)
@@ -185,7 +215,7 @@ class BorsdataExcelRecord < FileBasedRecord
 
         # Populate the data array with logarithmic data.
         # (Note: map, inject etc don't like break, they would return nil)
-        data = []
+        @data = []
         today = nil
         sheet.rows[1..-1].each do |row|
             day = if row[0].respond_to?(:to_time)
@@ -200,10 +230,8 @@ class BorsdataExcelRecord < FileBasedRecord
             next unless day > 10000 &&
                 day <= Time.now.to_i / 86400 &&
                 price > 0.0
-            data.push({date: day, log_price: Math.log10(price)})
+            @data.push({date: day, log_price: Math.log10(price)})
         end
-
-        return data
     end
 end
 
@@ -225,7 +253,7 @@ class YahooCSVRecord < FileBasedRecord
         end
         @updated = lines.first.split(',')[0]
 
-        data = []
+        @data = []
         today = nil
         lines.each do |line|
             row = line.split(',')
@@ -233,10 +261,8 @@ class YahooCSVRecord < FileBasedRecord
             today ||= day
             break if day < today - 365.25 * $years
             price = row[4].to_f
-            data.push({date: day, log_price: Math.log10(price)})
+            @data.push({date: day, log_price: Math.log10(price)})
         end
-
-        return data
     end
 end
 
@@ -254,7 +280,7 @@ while argv[0].start_with?('-') do
 end
 
 records = []
-argv.each do |arg|
+argv.uniq.each do |arg|
     if File.file?(arg)
         if arg.end_with?('.xls')
             records.push(BorsdataExcelRecord.new(arg))
@@ -278,17 +304,17 @@ end
 
 puts "\e[1mTicker     Name               %3d yrs ø    RMSD    SNR     Now   FS     Updated\e[0m" % $years
 yearly_growths = []
+records =
+    records.select { |r| r.snr >= 1.5 && r.yearly_growth >= 0.2 } +
+    records.select { |r| r.snr < 1.5  || r.yearly_growth < 0.2 }
 records.each do |record|
     # Unfortunately, Börsdata reports 0 both when it really is 0 and when it is not applicable,
     # e.g. for real estate businesses. We therefore prefer to leave the value empty instead.
     f_score = record.f_score && record.f_score > 0 ? record.f_score : nil
-    snr = record.yearly_growth / record.rmsd
-    if record.yearly_growth >= 0.2 &&
-            snr > 1.5 &&
-            record.price_vs_trend.abs <= record.rmsd
-        print "\e[32m"
-    elsif snr <= 1.0
+    if record.snr < 1.5 || record.yearly_growth < 0.2
         print "\e[31m"
+    elsif record.price_vs_trend.abs <= record.rmsd
+        print "\e[32m"
     else
         print "\e[33m"
     end
@@ -296,7 +322,7 @@ records.each do |record|
     print "%-20s " % record.name[0..19]
     print "%+6.1f%% " % (100 * record.yearly_growth)
     print "%6.1f%% " % (100 * record.rmsd)
-    print "%6.2f " % snr
+    print "%6.2f " % record.snr
     print "%+6.1f%% " % (100 * record.price_vs_trend)
     print "%4s" % f_score.to_s
     print "%12s" % record.updated
