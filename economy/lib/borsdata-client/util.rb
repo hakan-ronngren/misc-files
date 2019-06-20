@@ -1,6 +1,6 @@
 require 'fileutils'
+require 'net/http'
 require 'json'
-require 'open-uri'
 require 'yaml'
 
 module Borsdata
@@ -27,13 +27,19 @@ module Borsdata
             cache_file = File.expand_path("cache#{path}.json",
                                           rootDirectory)
             if File.exists?(cache_file) &&
-                    Time.now - File.mtime(cache_file) < max_age_seconds
+                    (Borsdata.offline || (Time.now - File.mtime(cache_file) < max_age_seconds))
                 JSON.parse(File.read(cache_file))
-            else
-                uri = "https://#{API_HOST}#{path}?authKey=#{config['api_key']}"
+            elsif ! Borsdata.offline
+                uri = URI("https://#{API_HOST}#{path}?authKey=#{config['api_key']}")
                 data = nil
                 begin
-                    data = JSON.parse(open(uri).read)
+                    # TODO: finish this code, using https
+                    #http = Net::HTTP.new(uri.hostname)
+                    #http.set_debug_output($stderr)
+                    #text = http.get([uri.path, uri.query].join('?'))
+                    text = `curl -s --fail "#{uri.to_s}"`
+                    raise "Failed to call #{uri.to_s}" unless $?.exitstatus == 0
+                    data = JSON.parse(text)
                 rescue SocketError
                     puts 'Failed to connect to the Börsdata API'
                     exit 1

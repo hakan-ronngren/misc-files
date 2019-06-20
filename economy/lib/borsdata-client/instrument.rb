@@ -31,7 +31,7 @@ module Borsdata
                 @prices
             elsif id >= 0
                 # TODO: base the cache decision on the fact that new prices are published at 8PM
-                data = Util.get_data("/v1/instruments/#{id}/stockprices", 3600)
+                data = Util.get_data("/v1/instruments/#{id}/stockprices", 86400)
                 @prices = data['stockPricesList'].map do |item|
                     {
                         date: Date.parse(item['d']),

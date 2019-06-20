@@ -2,3 +2,4 @@
 *.xls
 *.csv
 *.sw?
+.DS_Store
