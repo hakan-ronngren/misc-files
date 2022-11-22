@@ -32,14 +32,4 @@ def get_data(path: str, max_age_seconds: int) -> dict:
                 f.write(json.dumps(data))
     return data
 
-def get_by_id(id: int,
-              clazz):
-    obj = clazz.memory_cache.get(id)
-    if obj is None:
-        for item in get_data(clazz.api_path, clazz.max_disk_cache_age_seconds)[clazz.response_key]:
-            if item[clazz.id_key] == id:
-                obj = clazz(item)
-        clazz.memory_cache[id] = obj
-
-    return obj
 

@@ -1,18 +1,18 @@
 from . import api
+from . import index
 
 
 class Sector:
-    memory_cache = dict()
-    api_path = '/v1/sectors'
-    max_disk_cache_age_seconds = 86400
-    response_key = 'sectors'
-    id_key = 'id'
-
     def __init__(self, item):
         self.name = item['name']
 
+    @classmethod
+    def all_from_api(cls):
+        data = api.get_data('/v1/sectors', 86400)
+        return data['sectors']
 
-_mem_cache = dict()
 
-def get_by_id(id) -> Sector:
-    return api.get_by_id(id, Sector)
+_by_id = index.Index(Sector, 'id')
+
+def get_by_oid(oid: int) -> Sector:
+    return _by_id.get(oid)
