@@ -1,2 +1,4 @@
 requests
 pyyaml
+pdoc3
+pycodestyle

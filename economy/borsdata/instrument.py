@@ -1,8 +1,7 @@
 from typing import List
 
-from . import api
+from . import borsdata as api
 from . import sector
-from . import index
 
 
 class InstrumentDay:
@@ -23,11 +22,6 @@ class Instrument:
         self.ticker = item['ticker']
         self._sector_id = item['sectorId']
 
-    @classmethod
-    def all_from_api(_):
-        data = api.get_data('/v1/instruments', 86400)
-        return data['instruments']
-
     @property
     def sector(self) -> str:
         if not hasattr(self, '_sector'):
@@ -42,11 +36,15 @@ class Instrument:
         return self._days
 
 
-_by_id = index.Index(Instrument, 'insId')
-_by_ticker = index.Index(Instrument, 'ticker')
+_dicts = api.get_data('/v1/instruments', 86400)['instruments']
+
+_by_id = api.LazyInstantiator(_dicts, Instrument, 'insId')
+_by_ticker = api.LazyInstantiator(_dicts, Instrument, 'ticker')
+
 
 def get_by_oid(oid: int) -> Instrument:
     return _by_id.get(oid)
+
 
 def get_by_ticker(ticker: str) -> Instrument:
     return _by_ticker.get(ticker)

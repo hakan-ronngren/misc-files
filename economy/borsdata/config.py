@@ -2,14 +2,15 @@ import os
 import yaml
 
 
-def root_directory() -> str:
+def data_directory() -> str:
     """ Gives the path of, and creates, the root directory for all local configuration and cache """
     root_dir = os.path.expanduser('~/.borsdata-client')
     os.makedirs(root_dir, exist_ok=True)
     return root_dir
 
+
 def config() -> dict:
-    config_file = os.path.join(root_directory(), 'config.yml')
+    config_file = os.path.join(data_directory(), 'config.yml')
 
     if not os.path.isfile(config_file):
         with open(config_file, 'w') as f:

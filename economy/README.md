@@ -1,13 +1,16 @@
 # Diverse aktieskript
 
-Hämta historik från Yahoo Finance:
+## borsdata
 
-https://finance.yahoo.com/quote/TICKER/history?p=TICKER
+Python-klasser för [Borsdata API](https://apidoc.borsdata.se/swagger/index.html),
+använder lokal filcache och lat laddning.
 
-Idé: bygg en egen applikation med Spring Boot.
+```bash
+make test
+```
 
-* https://commons.apache.org/proper/commons-math/javadocs/api-3.3/org/apache/commons/math3/stat/regression/SimpleRegression.html
-* https://www.tutorialspoint.com/spring_boot/
-* https://www.tutorialspoint.com/mongodb/
-* https://dzone.com/articles/nitrite-an-embedded-nosql-database-for-javaandroid
-* https://spring.io/guides/gs/consuming-rest/
+För att starta pdoc, som automatiskt uppdaterar webbsidan du har öppen vartefter du dokumenterar koden:
+
+```bash
+pdoc --http localhost:8888 borsdata
+```
