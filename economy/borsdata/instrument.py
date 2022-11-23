@@ -1,7 +1,7 @@
 from typing import List
 
 from . import borsdata as api
-from . import sector
+from .sector import Sector
 
 
 class InstrumentDay:
@@ -25,7 +25,7 @@ class Instrument:
     @property
     def sector(self) -> str:
         if not hasattr(self, '_sector'):
-            self._sector = sector.get_by_oid(self._sector_id)
+            self._sector = Sector.get_by_id(self._sector_id)
         return self._sector
 
     @property
@@ -35,16 +35,27 @@ class Instrument:
             self._days = list(InstrumentDay(item) for item in data['stockPricesList'])
         return self._days
 
+    @classmethod
+    def get_by_id(cls, oid: int) -> 'Instrument':
+        return _by_id.get(oid)
 
-_dicts = api.get_data('/v1/instruments', 86400)['instruments']
+    @classmethod
+    def get_by_isin(cls, oid: int) -> 'Instrument':
+        return _by_isin.get(oid)
 
-_by_id = api.LazyInstantiator(_dicts, Instrument, 'insId')
-_by_ticker = api.LazyInstantiator(_dicts, Instrument, 'ticker')
+    @classmethod
+    def get_by_ticker(cls, ticker: str) -> 'Instrument':
+        return _by_ticker.get(ticker)
 
 
-def get_by_oid(oid: int) -> Instrument:
-    return _by_id.get(oid)
+def _get_dicts():
+    global _dicts
+    if _dicts is None:
+        _dicts = api.get_data('/v1/instruments', 86400)['instruments']
+    return _dicts
 
 
-def get_by_ticker(ticker: str) -> Instrument:
-    return _by_ticker.get(ticker)
+_dicts = None
+_by_id = api.LazyInstantiator(_get_dicts(), Instrument, 'insId')
+_by_isin = api.LazyInstantiator(_get_dicts(), Instrument, 'isin')
+_by_ticker = api.LazyInstantiator(_get_dicts(), Instrument, 'ticker')

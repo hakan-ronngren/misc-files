@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
-from borsdata import instrument
+from borsdata import Instrument
+from analysis import InstrumentStatistics
 
-instr = instrument.get_by_oid(999)
-print(f'instrument name: {instr.name}')
-print(f'ticker: {instr.ticker}')
-print(f'sector name: {instr.sector.name}')
-print(f'price on {instr.days[3].date}: {instr.days[3].closing_price}')
+instr = Instrument.get_by_ticker('FNOX')
+print(f'Instantiated the Instrument {instr.name}')
+print(f'Its sector is {instr.sector.name}')
 
-instr = instrument.get_by_ticker('FNOX')
-print(f'instrument name: {instr.name}')
+stats = InstrumentStatistics(instr)
+print(stats.average())
+
+instr = Instrument.get_by_isin('SE0015192067')
+print(f'Instantiated the Instrument {instr.name}')
+print(f'Its sector is {instr.sector.name}')
