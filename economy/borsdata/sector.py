@@ -11,11 +11,8 @@ class Sector:
 
 
 def _get_dicts():
-    global _dicts
-    if _dicts is None:
-        _dicts = api.get_data('/v1/sectors', 86400)['sectors']
-    return _dicts
+    print('sector._get_dicts()')
+    return api.get_data('/v1/sectors', 86400)['sectors']
 
 
-_dicts = None
-_instantiator = api.LazyInstantiator(_get_dicts(), Sector, ['id'])
+_instantiator = api.LazyInstantiator(_get_dicts, Sector, ['id'])

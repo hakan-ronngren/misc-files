@@ -3,6 +3,7 @@ import os
 import requests
 import time
 
+from functools import cached_property
 from typing import List
 
 from . import config
@@ -38,39 +39,50 @@ def get_data(path: str, max_age_seconds: int) -> dict:
     cache_file = os.path.join(config.data_directory(), f'cache/{path}.json')
     data = None
     if os.path.isfile(cache_file) and (is_offline() or time.time() - os.path.getmtime(cache_file) < 1000 * max_age_seconds):
-        print(f"reading {path} from cache")
+        # Read {path} from cache
         data = read_from_json_file(cache_file)
     elif not is_offline():
-        print(f"asking api for {path}")
+        # Ask api for {path}
         uri = f'https://{api_host}{path}?authKey={config.config()["api_key"]}'
         response = requests.get(uri)
         # Throttle (max 100 requests per 10 seconds)
         time.sleep(0.1)
         if response.status_code == 200:
             data = response.json()
-            print(f"writing {path} to cache")
+            # Write {path} to cache
             write_to_json_file(cache_file, data)
     return data
 
 
 class LazyInstantiator:
-    '''Lazily instantiates a class from dicts in a list upon request, indexes them and makes them available.'''
+    '''
+    Lazily instantiates a class from dicts in a list upon request, indexes them and makes them available.
 
-    def __init__(self, dicts, cls, keys: List[str]) -> 'LazyInstantiator':
+    You give it a function that will be used to fetch a list of items from the API the first time the get
+    method is called. This way you do not need to feed the instantiator with any data upon creation.
+    '''
+
+    def __init__(self, fetcher, cls, keys: List[str]) -> 'LazyInstantiator':
         '''
         Args:
-            dicts (List[Dict]): A list of dicts from which instances can be created
-            cls (Class): The class to instantiate, the constructor of which must take a dict as the only argument
+            fetcher (function): A function that will fetch a list of dicts from which instances can be created
+            cls (class): The class to instantiate, the constructor of which must take a dict as the only argument
             keys (List[str]): The dict keys to index on. There must be no two objects having the same value for any of these keys.
         '''
-        self.dicts = dicts
+        self._fetcher = fetcher
         self.cls = cls
         self.indices = dict()
         for index_name in keys:
             self.indices[index_name] = dict()
 
+    @cached_property
+    def dicts(self):
+        return self._fetcher()
+
     def get(self, key, value):
         '''Returns the instance that corresponds to the key/value, always the same one.'''
+        if self.indices.get(key) is None:
+            raise KeyError(f"The LazyInstantiator for {self.cls} does not have an index for '{key}'")
         index = self.indices[key]
         instance = index.get(value)
         if instance is None:

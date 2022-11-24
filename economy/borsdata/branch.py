@@ -19,11 +19,8 @@ class Branch:
 
 
 def _get_dicts():
-    global _dicts
-    if _dicts is None:
-        _dicts = api.get_data('/v1/branches', 86400)['branches']
-    return _dicts
+    print('branch._get_dicts()')
+    return api.get_data('/v1/branches', 86400)['branches']
 
 
-_dicts = None
-_instantiator = api.LazyInstantiator(_get_dicts(), Branch, ['id'])
+_instantiator = api.LazyInstantiator(_get_dicts, Branch, ['id'])

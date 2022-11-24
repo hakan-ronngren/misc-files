@@ -14,7 +14,7 @@ class TestLazyInstantiator(TestCase):
         self.data_for_john = {'id': 1, 'name': 'John', 'email': 'John@example.com'}
         self.data_for_kate = {'id': 2, 'name': 'Kate', 'email': 'Kate@example.com'}
         self.cut = api.LazyInstantiator(
-            [self.data_for_john, self.data_for_kate],
+            lambda: [self.data_for_john, self.data_for_kate],
             DictTestObject,
             ['id', 'email'])
 
@@ -41,20 +41,19 @@ class TestLazyInstantiator(TestCase):
         obj = self.cut.get('id', 999)
         self.assertIsNone(obj)
 
+    def test_raises_informative_key_error_if_invalid_key(self):
+        try:
+            self.cut.get('foo', 0)
+            self.fail("Expected a KeyError")
+        except KeyError as e:
+            self.assertEqual(
+                "\"The LazyInstantiator for <class 'test_lazy_instantiator.DictTestObject'> does not have an index for 'foo'\"",
+                str(e))
+        except Exception:
+            self.fail("Expected a KeyError")
+
 
 class DictTestObject:
     def __init__(self, data):
         self.name = data['name']
         self.email = data['email']
-
-# class DictTestObject:
-#     def __init__(self, data):
-#         self._data = data
-
-#     @property
-#     def name(self):
-#         return self._data['name']
-
-#     @property
-#     def email(self):
-#         return self._data['email']

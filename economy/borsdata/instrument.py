@@ -52,12 +52,8 @@ class Instrument:
 
 
 def _get_dicts():
-    global _dicts
-    if _dicts is None:
-        _dicts = api.get_data('/v1/instruments', 86400)['instruments']
-    return _dicts
+    print('instrument._get_dicts()')
+    return api.get_data('/v1/instruments', 86400)['instruments']
 
 
-# TODO: Prevent this from running prematurely (can't call the function below, must pass it)
-_dicts = None
-_instantiator = api.LazyInstantiator(_get_dicts(), Instrument, ['insId', 'isin', 'ticker'])
+_instantiator = api.LazyInstantiator(_get_dicts, Instrument, ['insId', 'isin', 'ticker'])
