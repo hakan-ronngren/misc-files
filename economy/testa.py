@@ -6,6 +6,7 @@ from analysis import InstrumentStatistics
 instr = Instrument.get_by_ticker('FNOX')
 print(f'Instantiated the Instrument {instr.name}')
 print(f'Its sector is {instr.sector.name}')
+print(f'Its branch is {instr.branch.name}')
 
 stats = InstrumentStatistics(instr)
 print(stats.average())
@@ -13,3 +14,4 @@ print(stats.average())
 instr = Instrument.get_by_isin('SE0015192067')
 print(f'Instantiated the Instrument {instr.name}')
 print(f'Its sector is {instr.sector.name}')
+print(f'Its branch is {instr.branch.name}')

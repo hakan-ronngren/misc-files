@@ -1,6 +1,7 @@
 from typing import List
 
 from . import borsdata as api
+from .branch import Branch
 from .sector import Sector
 
 
@@ -21,6 +22,13 @@ class Instrument:
         self.name = item['name']
         self.ticker = item['ticker']
         self._sector_id = item['sectorId']
+        self._branch_id = item['branchId']
+
+    @property
+    def branch(self) -> str:
+        if not hasattr(self, '_branch'):
+            self._branch = Branch.get_by_id(self._branch_id)
+        return self._branch
 
     @property
     def sector(self) -> str:
@@ -37,15 +45,15 @@ class Instrument:
 
     @classmethod
     def get_by_id(cls, oid: int) -> 'Instrument':
-        return _by_id.get(oid)
+        return _instantiator.get('insId', oid)
 
     @classmethod
-    def get_by_isin(cls, oid: int) -> 'Instrument':
-        return _by_isin.get(oid)
+    def get_by_isin(cls, isin: str) -> 'Instrument':
+        return _instantiator.get('isin', isin)
 
     @classmethod
     def get_by_ticker(cls, ticker: str) -> 'Instrument':
-        return _by_ticker.get(ticker)
+        return _instantiator.get('ticker', ticker)
 
 
 def _get_dicts():
@@ -55,7 +63,6 @@ def _get_dicts():
     return _dicts
 
 
+# TODO: Prevent this from running prematurely (can't call the function below, must pass it)
 _dicts = None
-_by_id = api.LazyInstantiator(_get_dicts(), Instrument, 'insId')
-_by_isin = api.LazyInstantiator(_get_dicts(), Instrument, 'isin')
-_by_ticker = api.LazyInstantiator(_get_dicts(), Instrument, 'ticker')
+_instantiator = api.LazyInstantiator(_get_dicts(), Instrument, ['insId', 'isin', 'ticker'])

@@ -82,35 +82,3 @@ class TestBorsdata(TestCase):
         self.assertSequenceEqual(expected, actual)
         requests.get.assert_called_once_with('https://apiservice.borsdata.se/api/path?authKey=xxx')
         api.write_to_json_file.assert_called_once()
-
-    def test_lazy_instantiator(self):
-        cut = api.LazyInstantiator(
-            [{'name': 'John', 'size': 17}, {'name': 'Jane', 'size': 15}],
-            DictTestObject,
-            'name')
-
-        self.assertIsNone(cut.index.get('John'))
-        self.assertIsNone(cut.index.get('Jane'))
-
-        obj = cut.get('John')
-        self.assertEqual('John', obj.name)
-        self.assertEqual(17, obj.size)
-
-        self.assertIsNotNone(cut.index.get('John'))
-        self.assertIsNone(cut.index.get('Jane'))
-
-        obj = cut.get('Jane')
-        self.assertEqual('Jane', obj.name)
-        self.assertEqual(15, obj.size)
-
-        self.assertIsNotNone(cut.index.get('John'))
-        self.assertIsNotNone(cut.index.get('Jane'))
-
-        obj = cut.get('DoesNotExist')
-        self.assertIsNone(obj)
-
-
-class DictTestObject:
-    def __init__(self, data):
-        self.name = data['name']
-        self.size = data['size']

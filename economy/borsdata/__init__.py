@@ -10,6 +10,10 @@ i2 = Instrument.get_by_isin('SE0015192067')
 ```
 
 Given a key, you will always get the same instance back.
+
+TODO: also make sure that different `get_by_xxx` methods return the same instance when applicable
 '''
 
+from .branch import Branch
 from .instrument import Instrument
+from .sector import Sector

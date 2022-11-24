@@ -7,7 +7,7 @@ class Sector:
 
     @classmethod
     def get_by_id(cls, oid: int) -> 'Sector':
-        return _by_id.get(oid)
+        return _instantiator.get('id', oid)
 
 
 def _get_dicts():
@@ -18,4 +18,4 @@ def _get_dicts():
 
 
 _dicts = None
-_by_id = api.LazyInstantiator(_get_dicts(), Sector, 'id')
+_instantiator = api.LazyInstantiator(_get_dicts(), Sector, ['id'])

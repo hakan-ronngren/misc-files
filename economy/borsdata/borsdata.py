@@ -3,7 +3,7 @@ import os
 import requests
 import time
 
-from typing import List, Dict
+from typing import List
 
 from . import config
 
@@ -56,25 +56,32 @@ def get_data(path: str, max_age_seconds: int) -> dict:
 class LazyInstantiator:
     '''Lazily instantiates a class from dicts in a list upon request, indexes them and makes them available.'''
 
-    def __init__(self, dicts, cls, index_key: str) -> 'LazyInstantiator':
+    def __init__(self, dicts, cls, keys: List[str]) -> 'LazyInstantiator':
         '''
         Args:
             dicts (List[Dict]): A list of dicts from which instances can be created
             cls (Class): The class to instantiate, the constructor of which must take a dict as the only argument
-            index_key (str): The dict key to index on
+            keys (List[str]): The dict keys to index on. There must be no two objects having the same value for any of these keys.
         '''
         self.dicts = dicts
         self.cls = cls
-        self.index_key = index_key
-        self.index = dict()
+        self.indices = dict()
+        for index_name in keys:
+            self.indices[index_name] = dict()
 
-    def get(self, index_value):
-        '''Returns the instance that corresponds to the index value, always the same one.'''
-        instance = self.index.get(index_value)
+    def get(self, key, value):
+        '''Returns the instance that corresponds to the key/value, always the same one.'''
+        index = self.indices[key]
+        instance = index.get(value)
         if instance is None:
-            for item in self.dicts:
-                if item[self.index_key] == index_value:
-                    instance = self.cls(item)
-            self.index[index_value] = instance
+            # Not there, so we must create one and put in all indices
+            try:
+                data = next(d for d in self.dicts if d[key] == value)
+                instance = self.cls(data)
+                for index_name, index in self.indices.items():
+                    index[data[index_name]] = instance
+            except StopIteration:
+                # There is no such data dict, so let instance stay None
+                pass
 
         return instance
