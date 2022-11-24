@@ -18,7 +18,6 @@ class InstrumentDay:
 
 class Instrument:
     def __init__(self, item):
-        print(f'building Instrument from {item}')
         self.oid = item['insId']
         self.name = item['name']
         self.ticker = item['ticker']
@@ -52,7 +51,6 @@ class Instrument:
 
 
 def _get_dicts():
-    print('instrument._get_dicts()')
     return api.get_data('/v1/instruments', 86400)['instruments']
 
 

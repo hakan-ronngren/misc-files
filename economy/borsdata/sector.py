@@ -11,7 +11,6 @@ class Sector:
 
 
 def _get_dicts():
-    print('sector._get_dicts()')
     return api.get_data('/v1/sectors', 86400)['sectors']
 
 

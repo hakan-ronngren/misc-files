@@ -19,7 +19,6 @@ class Branch:
 
 
 def _get_dicts():
-    print('branch._get_dicts()')
     return api.get_data('/v1/branches', 86400)['branches']
 
 
