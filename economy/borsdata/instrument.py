@@ -1,4 +1,5 @@
 from typing import List
+from functools import cached_property
 
 from . import borsdata as api
 from .branch import Branch
@@ -24,24 +25,18 @@ class Instrument:
         self._sector_id = item['sectorId']
         self._branch_id = item['branchId']
 
-    @property
+    @cached_property
     def branch(self) -> str:
-        if not hasattr(self, '_branch'):
-            self._branch = Branch.get_by_id(self._branch_id)
-        return self._branch
+        return Branch.get_by_id(self._branch_id)
 
-    @property
+    @cached_property
     def sector(self) -> str:
-        if not hasattr(self, '_sector'):
-            self._sector = Sector.get_by_id(self._sector_id)
-        return self._sector
+        return Sector.get_by_id(self._sector_id)
 
-    @property
+    @cached_property
     def days(self) -> List[InstrumentDay]:
-        if not hasattr(self, '_days'):
-            data = api.get_data(f'/v1/instruments/{self.oid}/stockprices', 86400)
-            self._days = list(InstrumentDay(item) for item in data['stockPricesList'])
-        return self._days
+        data = api.get_data(f'/v1/instruments/{self.oid}/stockprices', 86400)
+        return list(InstrumentDay(item) for item in data['stockPricesList'])
 
     @classmethod
     def get_by_id(cls, oid: int) -> 'Instrument':

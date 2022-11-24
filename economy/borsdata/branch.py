@@ -1,3 +1,5 @@
+from functools import cached_property
+
 from . import borsdata as api
 from .sector import Sector
 
@@ -7,15 +9,13 @@ class Branch:
         self.name = item['name']
         self._sector_id = item['sectorId']
 
+    @cached_property
+    def sector(self) -> str:
+        return Sector.get_by_id(self._sector_id)
+
     @classmethod
     def get_by_id(cls, oid: int) -> 'Branch':
         return _instantiator.get('id', oid)
-
-    @property
-    def sector(self) -> str:
-        if not hasattr(self, '_sector'):
-            self._sector = Sector.get_by_id(self._sector_id)
-        return self._sector
 
 
 def _get_dicts():
