@@ -21,6 +21,8 @@ def read_from_json_file(path: str):
 
 
 def write_to_json_file(path: str, data) -> None:
+    containing_directory = os.path.dirname(path)
+    os.makedirs(containing_directory, exist_ok=True)
     with open(path, 'w') as f:
         f.write(json.dumps(data))
 
@@ -53,8 +55,6 @@ def get_data(path: str, **url_params) -> dict:
         if response.status_code == 200:
             data = response.json()
             # Write {path} to cache
-            cache_file_directory = os.path.dirname(cache_file)
-            os.makedirs(cache_file_directory, exist_ok=True)
             write_to_json_file(cache_file, data)
     return data
 

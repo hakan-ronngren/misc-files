@@ -52,7 +52,7 @@ class TestBorsdata(TestCase):
         os.path.isfile = MagicMock(return_value=False)
         api.write_to_json_file = MagicMock(return_value=None)
 
-        actual = api.get_data('/api/path', 10)
+        actual = api.get_data('/api/path')
         expected = [{'foo': 'bar'}]
 
         self.assertSequenceEqual(expected, actual)
@@ -64,7 +64,7 @@ class TestBorsdata(TestCase):
         os.path.getmtime = MagicMock(return_value=time.time())
         api.read_from_json_file = MagicMock(return_value=[{"foo": "bar"}])
 
-        actual = api.get_data('/api/path', 10)
+        actual = api.get_data('/api/path')
         expected = [{'foo': 'bar'}]
 
         self.assertSequenceEqual(expected, actual)
@@ -76,7 +76,7 @@ class TestBorsdata(TestCase):
         os.path.getmtime = MagicMock(return_value=0)
         api.write_to_json_file = MagicMock(return_value=None)
 
-        actual = api.get_data('/api/path', 10)
+        actual = api.get_data('/api/path')
         expected = [{'foo': 'bar'}]
 
         self.assertSequenceEqual(expected, actual)
