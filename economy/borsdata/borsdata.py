@@ -2,14 +2,12 @@ import json
 import os
 import requests
 import time
+import urllib.parse
 
 from functools import cached_property
 from typing import List
 
 from . import config
-
-
-'''Borsdata API wrapper'''
 
 
 # TODO: decide where to have this one. We had it in an outer module in Ruby.
@@ -27,14 +25,18 @@ def write_to_json_file(path: str, data) -> None:
         f.write(json.dumps(data))
 
 
-def get_data(path: str, max_age_seconds: int) -> dict:
+def get_data(path: str, **url_params) -> dict:
     '''
     Returns the JSON response for a specific URL path, using a cache.
 
     Args:
         path (str): URL path to call
-        max_age_seconds (int): maximum age of cache file
+        url_params (dict): URL parameters to add (will become URI-encoded)
     '''
+    max_age_seconds = 86400
+    qpath = f'{path}?authKey={config.config()["api_key"]}'
+    for k, v in url_params.items():
+        qpath = qpath + f'&{k}={urllib.parse.quote(str(v))}'
     api_host = 'apiservice.borsdata.se'
     cache_file = os.path.join(config.data_directory(), f'cache/{path}.json')
     data = None
@@ -43,13 +45,16 @@ def get_data(path: str, max_age_seconds: int) -> dict:
         data = read_from_json_file(cache_file)
     elif not is_offline():
         # Ask api for {path}
-        uri = f'https://{api_host}{path}?authKey={config.config()["api_key"]}'
+        uri = f'https://{api_host}{qpath}'
+        print(uri)
         response = requests.get(uri)
         # Throttle (max 100 requests per 10 seconds)
         time.sleep(0.1)
         if response.status_code == 200:
             data = response.json()
             # Write {path} to cache
+            cache_file_directory = os.path.dirname(cache_file)
+            os.makedirs(cache_file_directory, exist_ok=True)
             write_to_json_file(cache_file, data)
     return data
 

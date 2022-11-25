@@ -4,6 +4,7 @@ from functools import cached_property
 from . import borsdata as api
 from .branch import Branch
 from .sector import Sector
+from .kpi import KPI
 
 
 class InstrumentDay:
@@ -14,6 +15,15 @@ class InstrumentDay:
         self.closing_price = item['c']
         self.opening_price = item['o']
         self.volume = item['v']
+
+
+class InstrumentDividend:
+    def __init__(self, item) -> 'InstrumentDividend':
+        self.year = item['y']
+        self.value = item['v']
+        # Unclear what p is. For 'AAK', 'ABB B', 'INVE B', and 'SSAB B'
+        # the p value for 2022 (the latest) is 3, for older it is 5.
+        self.p = item['p']
 
 
 class Instrument:
@@ -34,8 +44,14 @@ class Instrument:
 
     @cached_property
     def days(self) -> List[InstrumentDay]:
-        data = api.get_data(f'/v1/instruments/{self.oid}/stockprices', 86400)
+        data = api.get_data(f'/v1/instruments/{self.oid}/stockprices')
         return list(InstrumentDay(item) for item in data['stockPricesList'])
+
+    @cached_property
+    def dividends(self) -> List[InstrumentDividend]:
+        data = api.get_data(f'/v1/instruments/{self.oid}/kpis/{KPI.DIVIDEND_ID}/year/mean/history', maxCount=20)
+        # TODO: honour the introduction date
+        return list(InstrumentDividend(item) for item in data['values'])
 
     @classmethod
     def get_by_id(cls, oid: int) -> 'Instrument':
@@ -51,7 +67,7 @@ class Instrument:
 
 
 def _get_dicts():
-    return api.get_data('/v1/instruments', 86400)['instruments']
+    return api.get_data('/v1/instruments')['instruments']
 
 
 _instantiator = api.LazyInstantiator(_get_dicts, Instrument, ['insId', 'isin', 'ticker'])

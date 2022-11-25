@@ -11,7 +11,7 @@ class Sector:
 
 
 def _get_dicts():
-    return api.get_data('/v1/sectors', 86400)['sectors']
+    return api.get_data('/v1/sectors')['sectors']
 
 
 _instantiator = api.LazyInstantiator(_get_dicts, Sector, ['id'])

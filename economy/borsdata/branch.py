@@ -19,7 +19,7 @@ class Branch:
 
 
 def _get_dicts():
-    return api.get_data('/v1/branches', 86400)['branches']
+    return api.get_data('/v1/branches')['branches']
 
 
 _instantiator = api.LazyInstantiator(_get_dicts, Branch, ['id'])
