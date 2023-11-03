@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Teleprompter</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+                line-height: 1.2;
+                margin: 1em auto;
+                max-width: 50em;
+                width: 98%;
+                background: black;
+                color: white;
+            }
+
+            #textview {
+                font-size: 60px;
+                margin-top: 50vh;
+                margin-bottom: 105vh;
+            }
+
+            #speed {
+                width: 40px;
+            }
+        </style>
+        <script>
+            function start() {
+                var speed = document.getElementById("speed").value;
+                document.getElementById("textview").innerHTML = document
+                    .getElementById("textarea")
+                    .value
+                    .replaceAll(/\n+/g, "\n")
+                    .replaceAll("\n", "<hr>");
+                window.setInterval(scrollOneStep, 100 / speed);
+            }
+
+            function scrollOneStep() {
+                window.scrollBy(0, 1);
+            }
+        </script>
+    </head>
+    <body>
+        <p>Type your text here. Line breaks will become paragraph breaks.</p>
+        <p><textarea id="textarea" rows=25 cols=100></textarea></p>
+        <p>Speed: <input type="number" id="speed" value="4"></p>
+        <p><button onclick="start()">Start</button></p>
+        <div id="textview">
+        </div>
+    </body>
+</html>
